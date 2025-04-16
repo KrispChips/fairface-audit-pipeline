@@ -1,75 +1,97 @@
-# FairFace: Face Attribute Dataset for Balanced Race, Gender, and Age
+# FairFace Audit Pipeline
 
-The paper: https://openaccess.thecvf.com/content/WACV2021/papers/Karkkainen_FairFace_Face_Attribute_Dataset_for_Balanced_Race_Gender_and_Age_WACV_2021_paper.pdf
+This project performs a fairness audit of the [FairFace](https://github.com/dchen236/FairFace) facial recognition model. Given a labeled `.xlsx` file of human-validated facial attributes (age, gender, race), the pipeline:
 
-Karkkainen, K., & Joo, J. (2021). FairFace: Face Attribute Dataset for Balanced Race, Gender, and Age for Bias Measurement and Mitigation. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (pp. 1548-1558).
+1. Converts the input into a CSV for prediction
+2. Runs FairFace detection and classification
+3. Merges predictions with ground truth
+4. Scores the predictions using a structured fairness rubric
+5. Outputs an audit report in `.xlsx` format
 
-### If you use our dataset or model in your paper, please cite:
+---
+
+## 📆 Environment Setup
+
+To ensure all dependencies (e.g., `torch`, `dlib`, `pandas`, `openpyxl`) are installed correctly, use the provided Conda environment file:
+
+### Step 1: Create the environment
+
+```bash
+conda env create -f environment.yaml
+```
+
+### Step 2: Activate it
+
+```bash
+conda activate fairface
+```
+
+---
+
+## 🚀 How to Run the Pipeline
+
+The entire pipeline is contained in `audit.py`. To run it:
+
+```bash
+python audit.py
+```
+
+This script will:
+
+- Convert your input Excel file (e.g., `provided_labels.xlsx` or `extra_credit_labels.xlsx`)
+- Run FairFace predictions
+- Merge and score the results
+- Save the final audit file as `scored_audit_results.xlsx` 
+
+### Input Format
+
+Ensure your input Excel file has:
+
+- 3 metadata/header rows (the actual data starts from row 4)
+- A column labeled `file` that contains image paths like `val/123.jpg`
+
+---
+
+## 📊 Scoring Rubric
+
+Each image is scored out of **10** based on how well FairFace's predictions match the human-validated labels.
+
+| Attribute  | Max Points | Deduction Rule                                                      |
+| ---------- | ---------- | ------------------------------------------------------------------- |
+| **Race**   | 4 pts      | ✅ 0 if match, ❌ -4 if mismatch                                      |
+| **Gender** | 2 pts      | ✅ 0 if match, ❌ -2 if mismatch                                      |
+| **Age**    | 4 pts      | ✅ 0 if exact match⚠️ -2 if off by 1 bucket❌ -4 if off by 2+ buckets |
+
+### Age Buckets
 
 ```
- @inproceedings{karkkainenfairface,
-  title={FairFace: Face Attribute Dataset for Balanced Race, Gender, and Age for Bias Measurement and Mitigation},
-  author={Karkkainen, Kimmo and Joo, Jungseock},
-  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
-  year={2021},
-  pages={1548--1558}
-}
+["0-2", "3-9", "10-19", "20-29", "30-39", "40-49", "50-59", "60-69", "70+"]
 ```
 
-### Examples of FairFace Prediction
-![](https://github.com/dchen236/FairFace/blob/master/examples/female.png)
-![](https://github.com/dchen236/FairFace/blob/master/examples/male.png)
+### Special Handling
 
-### Instructions to use FairFace
+- `more than 70` → interpreted as `70+`
+- If any prediction is missing → score is **0**, note: *"Missing FairFace prediction(s)"*
 
-- Download or Clone this repo
-- Install Dependencies
-   1. Please follow the [Pytorch's official documentation](https://pytorch.org/get-started/locally/) to install Pytorch
-   2. Please also install dlib, if you have pip installed on your system. Simply type the following command on your terminal.
+### Output Example
 
-   ```
-   pip install dlib
-   ```
-- Download our models
-   Download our pretrained models from [here](https://drive.google.com/drive/folders/1F_pXfbzWvG-bhCpNsRj6F_xsdjpesiFu?usp=sharing) and save it in the same folder as where predict.py is located. Two models are included, race_4 model predicts race as White, Black, Asian and Indian and race_7 model predicts races as White, Black, Latino_Hispanic, East, Southeast Asian, Indian, Middle Eastern.
-- Unzip the downloaded FairFace model as well as dlib face detection models in dlib_models.
-- Prepare the images
-   - prepare a csv and provide the paths of testing images where the colname name of testing images is "img_path" (see our [template csv file](https://github.com/dchen236/FairFace/blob/master/test_imgs.csv).
+| Score | Notes                                            |
+| ----- | ------------------------------------------------ |
+| 10    | Gender match; Race match; Age match              |
+| 6     | Gender match; Race mismatch; Age off by 1 bucket |
+| 0     | Missing FairFace prediction(s)                   |
 
+---
 
-### Run script predict.py
-Run the predict.py script and provide the csv path (described in the section above).
-```
-python3 predict.py --csv "NAME_OF_CSV"
-```
-After download this repository, you can run `python3 predict.py --csv test_imgs.csv`, the results will be available at detected_faces (in case dlib detect multiple faces in one image, we save them here) and test_outputs.csv.
-#### Results
-The results will be saved at "test_outputs.csv" (located in the same folder as predict.py, see sample [here](https://github.com/dchen236/FairFace/blob/master/test_outputs.csv)
+## 📁 Output Files
 
-### UPDATES: 
+- `standard_labels.csv` — converted input for FairFace
+- `test_outputs.csv` — raw FairFace predictions
+- `scored_audit_results.xlsx` — final audit file with quality scores and notes
 
-### Run script predict_bbox.py
- same commands as predict.py, the output csv will have additional column "bbox" which is the bounding box of detected face.
-```
-python3 predict_bbox.py --csv "NAME_OF_CSV"
-```
- 
+---
 
-##### output file documentation
-indices to type
-- race_scores_fair (model confidence score)   [White, Black, Latino_Hispanic, East, Southeast Asian, Indian, Middle Eastern]
-- race_scores_fair_4 (model confidence score) [White, Black, Asian, Indian]
-- gender_scores_fair (model confidence score) [Male, Female]
-- age_scores_fair (model confidence score)    [0-2, 3-9, 10-19, 20-29, 30-39, 40-49, 50-59, 60-69, 70+]
+## 🧑‍💻 Author
 
+Built by **Krithish Ayyappan** for fairness auditing of facial recognition systems.
 
-### Data
-Images (train + validation set): [Padding=0.25](https://drive.google.com/file/d/1Z1RqRo0_JiavaZw2yzZG6WETdZQ8qX86/view), [Padding=1.25](https://drive.google.com/file/d/1g7qNOZz9wC7OfOhcPqH1EZ5bk1UFGmlL/view)
-
-We used dlib's get_face_chip() to crop and align faces with padding = 0.25 in the main experiments (less margin) and padding = 1.25 for the bias measument experiment for commercial APIs.
-Labels: [Train](https://drive.google.com/file/d/1i1L3Yqwaio7YSOCj7ftgk8ZZchPG7dmH/view), [Validation](https://drive.google.com/file/d/1wOdja-ezstMEp81tX1a-EYkFebev4h7D/view)
-
-License: CC BY 4.0
-
-### Notes
-The models and scripts were tested on a device with 8Gb GPU, it takes under 2 seconds to predict the 5 images in the test folder.
