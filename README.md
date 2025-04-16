@@ -38,7 +38,7 @@ python audit.py
 
 This script will:
 
-- Convert your input Excel file (e.g., `provided_labels.xlsx` or `extra_credit_labels.xlsx`)
+- Convert your input Excel file (e.g., `provided_labels.xlsx` (contains standard 40 images) or `extra_credit_labels.xlsx` (contains the 1000 images))
 - Run FairFace predictions
 - Merge and score the results
 - Save the final audit file as `scored_audit_results.xlsx` 
